@@ -4,7 +4,6 @@
 /STM32 References
 /Tutorial
 /Useful Datasheets
-
 # Object files
 *.o
 *.ko
