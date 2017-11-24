@@ -335,7 +335,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>USE_STDPERIPH_DRIVER,STM32F40_41xxx,__FPU_PRESENT=1,__FPU_USED=1</Define>
               <Undefine></Undefine>
-              <IncludePath>.\User; .\STM32F4xx_StdPeriph_Driver\inc; .\CMSIS\Device\ST\STM32F4xx\Include</IncludePath>
+              <IncludePath>.\STM32F4xx_StdPeriph_Driver\inc; .\CMSIS\Device\ST\STM32F4xx\Include; .\User</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -693,6 +693,16 @@
               <FileName>laser.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\User\laser.c</FilePath>
+            </File>
+            <File>
+              <FileName>led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\led.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\lcd_main.c</FilePath>
             </File>
           </Files>
         </Group>

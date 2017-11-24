@@ -78,14 +78,17 @@ static void stepper_set_dir_pin(u8 id, u8 dir) {
 	}
 }
 
-static u32 stepper_get_pulse_count(u8 id) {
+static u32 stepper_get_pulse_count(s16 vel) {
+	if (vel == 0)
+		return 0;
+	
 	// Steps per revolution = 200
 	// Frequency of pulses = RPM * 200 / 60
 	// Period of pulses = 60 / (RPM * 200)
 	// Period of timer count = 504 / 168E6 = 3E-6 (3us)
 	// No. of counts per pulse = 60 / (RPM * 200 * 3E-6) = 1E5 / RPM
 	
-	u32 countsPerPulse = 100000 / stepperList[id].velocity;
+	u32 countsPerPulse = 100000 / vel;
 	return countsPerPulse - triggerPulseCount;
 }
 
@@ -111,7 +114,7 @@ s16 stepper_get_vel(u8 id) {
 
 void stepper_set_vel(u8 id, s16 vel) {
 	stepperList[id].velocity = vel;
-	stepperList[id].countsBetweenPulses = stepper_get_pulse_count(id);
+	stepperList[id].countsBetweenPulses = stepper_get_pulse_count(vel);
 	
 	if (vel == 0) {
 		TIM_ITConfig(TIM3, stepperList[id].interruptChannel, DISABLE);

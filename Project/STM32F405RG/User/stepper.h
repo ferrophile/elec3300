@@ -19,7 +19,7 @@ typedef struct {
 	u16 interruptChannel;			// TIM_IT_CCx
 } STEPPER;
 
-void stepper_init();
+void stepper_init(void);
 s16 stepper_get_vel(u8 id);
 void stepper_set_vel(u8 id, s16 vel);
 void stepper_set_deg(u8 id, s16 vel, u32 degree);

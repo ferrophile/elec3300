@@ -48,6 +48,8 @@
 ".\objects\ticks.o"
 ".\objects\stepper.o"
 ".\objects\laser.o"
+".\objects\led.o"
+".\objects\lcd_main.o"
 --strict --scatter ".\Objects\scanner.sct"
 --summary_stderr --info summarysizes --map --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
