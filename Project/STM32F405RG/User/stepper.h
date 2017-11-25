@@ -5,7 +5,8 @@
 
 #define STEPPER_COUNT 3
 
-#define ABS(x) ((x)<0 ? -(x) : (x));
+#define ABS(x) ((x)<0 ? -(x) : (x))
+#define SIGN(x) ((x) / ABS(x))
 
 // Stepper ID
 enum {
@@ -19,6 +20,8 @@ typedef struct {
 	u32 countsBetweenPulses;	// Timer counts between pulses to generate the above velocity
 	u8 pulseState;						// 1 - STEP pin is high (pulse trigger); 0 - STEP pin is low
 	u16 interruptChannel;			// TIM_IT_CCx
+	u8 setVelocityFlag;				// Flag for set velocity request
+	u32 stepCount;						// No. of (signed) steps moved, ignoring skips
 } STEPPER;
 
 void stepper_init(void);

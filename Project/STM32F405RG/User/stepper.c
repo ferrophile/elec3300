@@ -2,7 +2,6 @@
 
 // List of steppers.
 static STEPPER stepperList[STEPPER_COUNT];
-static u32 stepCount[STEPPER_COUNT];
 
 // This specifies the no. of timer counts for a trigger pulse.
 static const u8 triggerPulseCount = 2; // 6 us
@@ -49,14 +48,17 @@ static void stepper_timer_init(void) {
 	
 	TIM_OC1Init(TIM3, &TIM_OCInitStruct);
 	TIM_OC1PreloadConfig(TIM3, ENABLE);
+	TIM_SetCompare1(TIM3, 0);
 	TIM_ITConfig(TIM3, TIM_IT_CC1, DISABLE);
 
 	TIM_OC2Init(TIM3, &TIM_OCInitStruct);
 	TIM_OC2PreloadConfig(TIM3, ENABLE);
+	TIM_SetCompare2(TIM3, 0);
 	TIM_ITConfig(TIM3, TIM_IT_CC2, DISABLE);
 	
 	TIM_OC3Init(TIM3, &TIM_OCInitStruct);
 	TIM_OC3PreloadConfig(TIM3, ENABLE);
+	TIM_SetCompare3(TIM3, 0);
 	TIM_ITConfig(TIM3, TIM_IT_CC3, DISABLE);
 	
 	TIM_Cmd(TIM3, ENABLE);
@@ -105,6 +107,8 @@ void stepper_init(void) {
 		stepper.pulseState = 0;
 		stepper.countsBetweenPulses = 0;
 		stepper.interruptChannel = TIM_IT_CC1 << i;
+		stepper.setVelocityFlag = 0;
+		stepper.stepCount = 0;
 		stepperList[i] = stepper;
 	}
 	
@@ -122,49 +126,60 @@ STEPPER * stepper_get_params(u8 id) {
 }
 
 u32 stepper_get_count(u8 id) {
-	return stepCount[id];
+	return stepperList[id].stepCount;
 }
 
 void stepper_set_vel(u8 id, s16 vel) {
-	stepperList[id].velocity = vel;
-	stepperList[id].countsBetweenPulses = stepper_get_pulse_count(vel);
+	STEPPER * stepper = stepperList + id;
 	
-	if (vel == 0) {
-		TIM_ITConfig(TIM3, stepperList[id].interruptChannel, DISABLE);
+	if (stepper->velocity == 0) {
+		TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
+		stepper_set_dir_pin(id, SIGN(vel));
 	} else {
-		u32 curCount = TIM_GetCounter(TIM3) + 1;
-		if (id == STEPPER_1) TIM_SetCompare1(TIM3, curCount);
-		if (id == STEPPER_2) TIM_SetCompare2(TIM3, curCount);
-		if (id == STEPPER_3) TIM_SetCompare3(TIM3, curCount);
-		
-		TIM_ITConfig(TIM3, stepperList[id].interruptChannel, ENABLE);
-		stepper_set_dir_pin(id, (vel>0 ? 1 : 0));
+		stepper->setVelocityFlag = 1;
 	}
+
+	stepper->velocity = vel;
+	stepper->countsBetweenPulses = stepper_get_pulse_count(vel);
 }
 
 void TIM3_IRQHandler(void) {
 	for (u8 i = 0; i < STEPPER_COUNT; i++) {
-		u16 interruptChannel = stepperList[i].interruptChannel;
+		STEPPER * stepper = stepperList + i;
+		u16 interruptChannel = stepper->interruptChannel;
 		if (TIM_GetITStatus(TIM3, interruptChannel)) {
-			TIM_ClearITPendingBit(TIM3, interruptChannel);
-			
 			// TIM3_CHx pin (STEP pin) will be automatically toggled by hardware.
 			// This section only changes TIM3_CCRx to schedule the next toggle.
 			// There is no need for modulus, since TIM3_ARR is set to 2^32-1 so
 			// unsigned 32-bit addition and overflow should be correct.
 			
-			if (stepperList[i].pulseState) {
+			if (stepper->pulseState) {
+				// Update step count using current direction
+				stepper->stepCount += SIGN(stepperList[i].velocity);
+				
+				// Update velocity control
+				if (stepper->setVelocityFlag) {
+					if (stepper->velocity == 0)
+						TIM_ITConfig(TIM3, stepper->interruptChannel, DISABLE);
+					else
+						stepper_set_dir_pin(i, SIGN(stepperList[i].velocity));
+					
+					// Clear flag
+					stepper->setVelocityFlag = 0;
+				}
+				
 				// Falling edge; pin will be pulled down, wait for period until next pulse
 				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
 				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
-				stepperList[i].pulseState = 0;
-				stepCount[i]++;
+				stepper->pulseState = 0;
 			} else {
 				// Rising edge; pin will be pulled up for short pulse
 				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
 				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
-				stepperList[i].pulseState = 1;
+				stepper->pulseState = 1;
 			}
+			
+			TIM_ClearITPendingBit(TIM3, interruptChannel);
 		}
 	}
 }

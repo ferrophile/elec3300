@@ -1,6 +1,15 @@
 #include "main.h"
 
 u32 ticksImg = 0;
+s16 scanner_vel = 0;
+
+void scanner_up_handler() {
+	stepper_set_vel(STEPPER_1, stepper_get_vel(STEPPER_1) + 50);
+}
+
+void scanner_dn_handler() {
+	stepper_set_vel(STEPPER_1, stepper_get_vel(STEPPER_1) - 50);
+}
 
 int main(void) {
 	SystemInit();
@@ -15,8 +24,7 @@ int main(void) {
 	led_on(LED_A);
 	led_off(LED_B);
 	
-	stepper_set_vel(STEPPER_1, -50);
-	stepper_set_vel(STEPPER_2, 50);
+	button_set_handler(BUTTON_2, scanner_up_handler);
 	
 	while(1) {
 		if (ticksImg != get_ticks()) {
@@ -29,7 +37,6 @@ int main(void) {
 				tft_println("%d %d", stepper_get_vel(STEPPER_2), stepper_get_params(STEPPER_2)->countsBetweenPulses);
 				tft_println("");
 				tft_println("%d %d", stepper_get_count(STEPPER_1), stepper_get_count(STEPPER_2));
-				tft_println("%d", test_count);
 				tft_update();
 			}
 			

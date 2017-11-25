@@ -1,5 +1,7 @@
 #include "button.h"
 
+static ButtonHandler handlers[2] = {0};
+
 void button_init(void) {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 	
@@ -14,65 +16,12 @@ void button_init(void) {
 	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
 	GPIO_Init(GPIOB, &GPIO_InitStruct);
-}
-
-u8 button_get_state(u8 id) {
-	if (id == BUTTON_1)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8);
-	if (id == BUTTON_2)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_9);
-	if (id == SW_1)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_3);
-	if (id == SW_2)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4);
-	if (id == SW_3)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5);
-	if (id == SW_4)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_6);
-	if (id == SW_5)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7);
-}
-
-void button_interrupt(u8 id) {
-	u8 pinSource;
-	u32 extiLine;
-	u8 irqChannel;
 	
-	switch (id) {
-	case BUTTON_1:
-		pinSource = EXTI_PinSource8;
-		extiLine = EXTI_Line8;
-		irqChannel = EXTI9_5_IRQn;
-		break;
-	case BUTTON_2:
-		pinSource = EXTI_PinSource9;
-		extiLine = EXTI_Line9;
-		irqChannel = EXTI9_5_IRQn;
-		break;
-	case SW_1:
-		pinSource = EXTI_PinSource3;
-		extiLine = EXTI_Line3;
-		irqChannel = EXTI3_IRQn;
-		break;
-	case SW_2:
-		pinSource = EXTI_PinSource4;
-		extiLine = EXTI_Line4;
-		irqChannel = EXTI4_IRQn;
-		break;
-	case SW_3:
-		pinSource = EXTI_PinSource5;
-		extiLine = EXTI_Line5;
-		irqChannel = EXTI9_5_IRQn;
-		break;
-	case SW_4:
-		pinSource = EXTI_PinSource6;
-		extiLine = EXTI_Line6;
-		irqChannel = EXTI9_5_IRQn;
-		break;
-	case SW_5:
-		pinSource = EXTI_PinSource7;
-		extiLine = EXTI_Line7;
-		irqChannel = EXTI9_5_IRQn;
-		break;
-	}
-	
-	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, pinSource);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource8);
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, EXTI_PinSource9);
 	
 	EXTI_InitTypeDef EXTI_InitStruct;
-	EXTI_InitStruct.EXTI_Line = extiLine;
+	EXTI_InitStruct.EXTI_Line = EXTI_Line8 | EXTI_Line9;
 	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
 	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling;
 	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
@@ -86,9 +35,28 @@ void button_interrupt(u8 id) {
 	NVIC_Init(&NVIC_InitStruct);
 }
 
+u8 button_get_state(u8 id) {
+	if (id == BUTTON_1)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8);
+	if (id == BUTTON_2)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_9);
+	if (id == SW_1)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_3);
+	if (id == SW_2)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4);
+	if (id == SW_3)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5);
+	if (id == SW_4)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_6);
+	if (id == SW_5)	return GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_7);
+}
+
+void button_set_handler(u8 id, ButtonHandler handler) {
+	handlers[id] = handler;
+}
+
 void EXTI9_5_IRQHandler() {
-	if (EXTI_GetFlagStatus(EXTI_Line9) == SET) {
-		//test_count++;
+	if (handlers[BUTTON_1] && EXTI_GetFlagStatus(EXTI_Line8) == SET) {
+		handlers[BUTTON_1]();
+		EXTI_ClearITPendingBit(EXTI_Line8);
+	}
+	
+	if (handlers[BUTTON_2] && EXTI_GetFlagStatus(EXTI_Line9) == SET) {
+		handlers[BUTTON_2]();
 		EXTI_ClearITPendingBit(EXTI_Line9);
 	}
 }
