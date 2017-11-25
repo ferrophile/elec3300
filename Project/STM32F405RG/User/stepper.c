@@ -2,6 +2,7 @@
 
 // List of steppers.
 static STEPPER stepperList[STEPPER_COUNT];
+static u32 stepCount[STEPPER_COUNT];
 
 // This specifies the no. of timer counts for a trigger pulse.
 static const u8 triggerPulseCount = 2; // 6 us
@@ -23,6 +24,10 @@ static void stepper_gpio_init(void) {
 	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
 	GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_TIM3);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_TIM3);
+	GPIO_PinAFConfig(GPIOC, GPIO_PinSource8, GPIO_AF_TIM3);
 	
 	GPIO_ResetBits(GPIOB, GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15);
 }
@@ -88,7 +93,7 @@ static u32 stepper_get_pulse_count(s16 vel) {
 	// Period of timer count = 504 / 168E6 = 3E-6 (3us)
 	// No. of counts per pulse = 60 / (RPM * 200 * 3E-6) = 1E5 / RPM
 	
-	u32 countsPerPulse = 100000 / vel;
+	u32 countsPerPulse = 100000 / ABS(vel);
 	return countsPerPulse - triggerPulseCount;
 }
 
@@ -99,7 +104,7 @@ void stepper_init(void) {
 		stepper.velocity = 0;
 		stepper.pulseState = 0;
 		stepper.countsBetweenPulses = 0;
-		stepper.interruptChannel = TIM_IT_CC1 << 0;
+		stepper.interruptChannel = TIM_IT_CC1 << i;
 		stepperList[i] = stepper;
 	}
 	
@@ -110,6 +115,14 @@ void stepper_init(void) {
 
 s16 stepper_get_vel(u8 id) {
 	return stepperList[id].velocity;
+}
+
+STEPPER * stepper_get_params(u8 id) {
+	return &stepperList[id];
+}
+
+u32 stepper_get_count(u8 id) {
+	return stepCount[id];
 }
 
 void stepper_set_vel(u8 id, s16 vel) {
@@ -125,6 +138,7 @@ void stepper_set_vel(u8 id, s16 vel) {
 		if (id == STEPPER_3) TIM_SetCompare3(TIM3, curCount);
 		
 		TIM_ITConfig(TIM3, stepperList[id].interruptChannel, ENABLE);
+		stepper_set_dir_pin(id, (vel>0 ? 1 : 0));
 	}
 }
 
@@ -141,12 +155,15 @@ void TIM3_IRQHandler(void) {
 			
 			if (stepperList[i].pulseState) {
 				// Falling edge; pin will be pulled down, wait for period until next pulse
-				TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
-				stepperList[STEPPER_1].pulseState = 0;
+				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
+				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
+				stepperList[i].pulseState = 0;
+				stepCount[i]++;
 			} else {
 				// Rising edge; pin will be pulled up for short pulse
-				TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
-				stepperList[STEPPER_1].pulseState = 1;
+				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
+				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
+				stepperList[i].pulseState = 1;
 			}
 		}
 	}

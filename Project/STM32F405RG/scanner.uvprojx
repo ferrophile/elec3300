@@ -704,6 +704,11 @@
               <FileType>1</FileType>
               <FilePath>.\User\lcd_main.c</FilePath>
             </File>
+            <File>
+              <FileName>button.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\button.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

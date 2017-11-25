@@ -2,6 +2,7 @@
 
 #include "led.h"
 #include "ticks.h"
+#include "button.h"
 #include "lcd_main.h"
 
 #include "stepper.h"

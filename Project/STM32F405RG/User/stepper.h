@@ -5,6 +5,8 @@
 
 #define STEPPER_COUNT 3
 
+#define ABS(x) ((x)<0 ? -(x) : (x));
+
 // Stepper ID
 enum {
 	STEPPER_1,
@@ -23,5 +25,8 @@ void stepper_init(void);
 s16 stepper_get_vel(u8 id);
 void stepper_set_vel(u8 id, s16 vel);
 void stepper_set_deg(u8 id, s16 vel, u32 degree);
+
+STEPPER * stepper_get_params(u8 id);
+u32 stepper_get_count(u8 id);
 
 #endif
