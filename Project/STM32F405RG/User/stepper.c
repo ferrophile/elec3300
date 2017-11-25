@@ -36,7 +36,7 @@ static void stepper_timer_init(void) {
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStruct;
 	TIM_TimeBaseStruct.TIM_Prescaler = 503; // 3us per count
 	TIM_TimeBaseStruct.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseStruct.TIM_Period = 0xFFFFFFFF; // TIM3 is 32-bit
+	TIM_TimeBaseStruct.TIM_Period = 0xFFFF;
 	TIM_TimeBaseStruct.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStruct);
 	
@@ -73,12 +73,12 @@ static void stepper_nvic_init(void) {
 	NVIC_Init(&NVIC_InitStruct);
 }
 
-static void stepper_set_dir_pin(u8 id, u8 dir) {
-	if (dir) {
+static void stepper_set_dir_pin(u8 id, s16 vel) {
+	if (vel > 0) {
 		if (id == STEPPER_1) GPIO_SetBits(GPIOB, GPIO_Pin_15);
 		if (id == STEPPER_2) GPIO_SetBits(GPIOB, GPIO_Pin_14);
 		if (id == STEPPER_3) GPIO_SetBits(GPIOB, GPIO_Pin_13);
-	} else {
+	} else if (vel < 0) {
 		if (id == STEPPER_1) GPIO_ResetBits(GPIOB, GPIO_Pin_15);
 		if (id == STEPPER_2) GPIO_ResetBits(GPIOB, GPIO_Pin_14);
 		if (id == STEPPER_3) GPIO_ResetBits(GPIOB, GPIO_Pin_13);
@@ -109,6 +109,7 @@ void stepper_init(void) {
 		stepper.interruptChannel = TIM_IT_CC1 << i;
 		stepper.setVelocityFlag = 0;
 		stepper.stepCount = 0;
+		stepper.targetStepCount = 0;
 		stepperList[i] = stepper;
 	}
 	
@@ -118,29 +119,47 @@ void stepper_init(void) {
 }
 
 s16 stepper_get_vel(u8 id) {
-	return stepperList[id].velocity;
+	STEPPER * stepper = stepperList + id;
+	return stepper->velocity;
 }
 
 STEPPER * stepper_get_params(u8 id) {
-	return &stepperList[id];
+	return stepperList + id;
 }
 
 u32 stepper_get_count(u8 id) {
-	return stepperList[id].stepCount;
+	STEPPER * stepper = stepperList + id;
+	return stepper->stepCount;
 }
 
 void stepper_set_vel(u8 id, s16 vel) {
 	STEPPER * stepper = stepperList + id;
 	
 	if (stepper->velocity == 0) {
+		// Start moving - generate a pulse next count
 		TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
-		stepper_set_dir_pin(id, SIGN(vel));
+		stepper_set_dir_pin(id, vel);
+		
+		u16 nextCount = TIM_GetCounter(TIM3) + 1;
+		if (id == STEPPER_1) TIM_SetCompare1(TIM3, nextCount);
+		if (id == STEPPER_2) TIM_SetCompare2(TIM3, nextCount);
+		if (id == STEPPER_3) TIM_SetCompare3(TIM3, nextCount);
 	} else {
+		// Already moving - wait for next pulse to change
 		stepper->setVelocityFlag = 1;
 	}
 
 	stepper->velocity = vel;
 	stepper->countsBetweenPulses = stepper_get_pulse_count(vel);
+	stepper->targetStepCount = stepper->stepCount;
+}
+
+void stepper_set_deg(u8 id, s16 vel, u32 degree) {
+	STEPPER * stepper = stepperList + id;
+	
+	u32 counts = degree * 200 / 360;
+	stepper_set_vel(id, vel);
+	stepper->targetStepCount = stepper->stepCount + counts * SIGN(vel);
 }
 
 void TIM3_IRQHandler(void) {
@@ -148,34 +167,41 @@ void TIM3_IRQHandler(void) {
 		STEPPER * stepper = stepperList + i;
 		u16 interruptChannel = stepper->interruptChannel;
 		if (TIM_GetITStatus(TIM3, interruptChannel)) {
-			// TIM3_CHx pin (STEP pin) will be automatically toggled by hardware.
-			// This section only changes TIM3_CCRx to schedule the next toggle.
-			// There is no need for modulus, since TIM3_ARR is set to 2^32-1 so
-			// unsigned 32-bit addition and overflow should be correct.
+			// TIM3_CHx pins (STEP pins) will be automatically toggled by hardware.
+			// This section only changes TIM3_CCRx registers to schedule the next toggle.
+			// There is no need for modulus, since TIM3_ARR is set to 2^16-1 so
+			// unsigned 16-bit addition and overflow should be correct.
 			
 			if (stepper->pulseState) {
 				// Update step count using current direction
-				stepper->stepCount += SIGN(stepperList[i].velocity);
+				stepper->stepCount += SIGN(stepper->velocity);
+				if (stepper->stepCount == stepper->targetStepCount)
+					stepper_set_vel(i, 0);
 				
 				// Update velocity control
 				if (stepper->setVelocityFlag) {
 					if (stepper->velocity == 0)
+						// Change to zero velocity, so stop interrupts
 						TIM_ITConfig(TIM3, stepper->interruptChannel, DISABLE);
 					else
-						stepper_set_dir_pin(i, SIGN(stepperList[i].velocity));
+						// Need to change directions only (countsBetweenPulses already updated)
+						stepper_set_dir_pin(i, stepper->velocity);
 					
 					// Clear flag
 					stepper->setVelocityFlag = 0;
 				}
 				
 				// Falling edge; pin will be pulled down, wait for period until next pulse
-				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
-				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + stepperList[i].countsBetweenPulses);
+				u32 nextCount = stepper->countsBetweenPulses;
+				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + nextCount);
+				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + nextCount);
+				if (i == STEPPER_3) TIM_SetCompare3(TIM3, TIM_GetCounter(TIM3) + nextCount);
 				stepper->pulseState = 0;
 			} else {
 				// Rising edge; pin will be pulled up for short pulse
 				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
 				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
+				if (i == STEPPER_3) TIM_SetCompare3(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
 				stepper->pulseState = 1;
 			}
 			

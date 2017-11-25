@@ -3,6 +3,7 @@
 
 #include "stm32f4xx.h"
 
+#define BUTTON_COUNT 7
 typedef void (*ButtonHandler)(void);
 
 // Released = 1 since GPIO is set to pullup
@@ -14,11 +15,11 @@ enum {
 enum {
 	BUTTON_1,
 	BUTTON_2,
-	SW_1,
-	SW_2,
-	SW_3,
-	SW_4,
-	SW_5
+	SW_LEFT,
+	SW_DOWN,
+	SW_RIGHT,
+	SW_MIDDLE,
+	SW_UP
 };
 
 void button_init(void);
