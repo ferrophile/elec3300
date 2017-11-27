@@ -5,6 +5,7 @@ static STEPPER stepperList[STEPPER_COUNT];
 
 // This specifies the no. of timer counts for a trigger pulse.
 static const u8 triggerPulseCount = 2; // 6 us
+static const u16 countsPerRevolution = 200;
 
 static void stepper_gpio_init(void) {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC, ENABLE);
@@ -41,7 +42,7 @@ static void stepper_timer_init(void) {
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStruct);
 	
 	TIM_OCInitTypeDef TIM_OCInitStruct;
-	TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_Toggle;
+	TIM_OCInitStruct.TIM_OCMode = TIM_OCMode_Inactive;
 	TIM_OCInitStruct.TIM_OutputState = TIM_OutputState_Enable;
 	TIM_OCInitStruct.TIM_Pulse = 0;
 	TIM_OCInitStruct.TIM_OCPolarity = TIM_OCPolarity_High;
@@ -106,10 +107,16 @@ void stepper_init(void) {
 		stepper.velocity = 0;
 		stepper.pulseState = 0;
 		stepper.countsBetweenPulses = 0;
-		stepper.interruptChannel = TIM_IT_CC1 << i;
 		stepper.setVelocityFlag = 0;
 		stepper.stepCount = 0;
 		stepper.targetStepCount = 0;
+		
+		stepper.channel = 4 * i;
+		stepper.interruptChannel = TIM_IT_CC1 << i;
+		if (i == STEPPER_1) stepper.setCompareFunc = TIM_SetCompare1;
+		if (i == STEPPER_2) stepper.setCompareFunc = TIM_SetCompare2;
+		if (i == STEPPER_3) stepper.setCompareFunc = TIM_SetCompare3;
+		
 		stepperList[i] = stepper;
 	}
 	
@@ -132,18 +139,23 @@ u32 stepper_get_count(u8 id) {
 	return stepper->stepCount;
 }
 
+u8 stepper_is_idle(u8 id) {
+	STEPPER * stepper = stepperList + id;
+	return (stepper->stepCount == stepper->targetStepCount);
+}
+
 void stepper_set_vel(u8 id, s16 vel) {
 	STEPPER * stepper = stepperList + id;
 	
 	if (stepper->velocity == 0) {
 		// Start moving - generate a pulse next count
-		TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
-		stepper_set_dir_pin(id, vel);
+		u16 nextCount = TIM_GetCounter(TIM3) + 5;
 		
-		u16 nextCount = TIM_GetCounter(TIM3) + 1;
-		if (id == STEPPER_1) TIM_SetCompare1(TIM3, nextCount);
-		if (id == STEPPER_2) TIM_SetCompare2(TIM3, nextCount);
-		if (id == STEPPER_3) TIM_SetCompare3(TIM3, nextCount);
+		stepper_set_dir_pin(id, vel);
+		(stepper->setCompareFunc)(TIM3, nextCount);
+		TIM_SelectOCxM(TIM3, stepper->channel, TIM_OCMode_Toggle);
+		TIM_CCxCmd(TIM3, stepper->channel, TIM_CCx_Enable);
+		TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
 	} else {
 		// Already moving - wait for next pulse to change
 		stepper->setVelocityFlag = 1;
@@ -157,7 +169,7 @@ void stepper_set_vel(u8 id, s16 vel) {
 void stepper_set_deg(u8 id, s16 vel, u32 degree) {
 	STEPPER * stepper = stepperList + id;
 	
-	u32 counts = degree * 200 / 360;
+	u32 counts = degree * countsPerRevolution / 360;
 	stepper_set_vel(id, vel);
 	stepper->targetStepCount = stepper->stepCount + counts * SIGN(vel);
 }
@@ -180,12 +192,14 @@ void TIM3_IRQHandler(void) {
 				
 				// Update velocity control
 				if (stepper->setVelocityFlag) {
-					if (stepper->velocity == 0)
+					if (stepper->velocity == 0) {
 						// Change to zero velocity, so stop interrupts
 						TIM_ITConfig(TIM3, stepper->interruptChannel, DISABLE);
-					else
+						TIM_SelectOCxM(TIM3, stepper->channel, TIM_OCMode_Inactive);
+					} else {
 						// Need to change directions only (countsBetweenPulses already updated)
 						stepper_set_dir_pin(i, stepper->velocity);
+					}
 					
 					// Clear flag
 					stepper->setVelocityFlag = 0;
@@ -193,15 +207,11 @@ void TIM3_IRQHandler(void) {
 				
 				// Falling edge; pin will be pulled down, wait for period until next pulse
 				u32 nextCount = stepper->countsBetweenPulses;
-				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + nextCount);
-				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + nextCount);
-				if (i == STEPPER_3) TIM_SetCompare3(TIM3, TIM_GetCounter(TIM3) + nextCount);
+				(stepper->setCompareFunc)(TIM3, TIM_GetCounter(TIM3) + nextCount);
 				stepper->pulseState = 0;
 			} else {
 				// Rising edge; pin will be pulled up for short pulse
-				if (i == STEPPER_1) TIM_SetCompare1(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
-				if (i == STEPPER_2) TIM_SetCompare2(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
-				if (i == STEPPER_3) TIM_SetCompare3(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
+				(stepper->setCompareFunc)(TIM3, TIM_GetCounter(TIM3) + triggerPulseCount);
 				stepper->pulseState = 1;
 			}
 			
