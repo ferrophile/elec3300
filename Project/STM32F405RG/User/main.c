@@ -51,6 +51,24 @@ void scanner_lower_btn_handler() {
 	}
 }
 
+u8 buffer[5] = {0};
+
+void test() {
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+	USART_SendData(USART2, 'E');
+	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+	USART_SendData(USART2, CMD_CR);
+}
+
+void read() {
+	static u8 i = 0;
+	u8 data = USART_ReceiveData(USART2);
+	if (data != 0 && i < 5) {
+		buffer[i] = data;
+		i++;
+	}
+}
+
 int main(void) {
 	SystemInit();
 	SystemCoreClockUpdate();
@@ -67,7 +85,10 @@ int main(void) {
 	button_set_handler(BUTTON_1, scanner_start_btn_handler);
 	button_set_handler(BUTTON_2, scanner_lower_btn_handler);
 	
+	button_set_handler(SW_MIDDLE, test);
+	
 	curState = scanner_standby;
+	usb_driver_init();
 	
 	while(1) {
 		if (ticksImg != get_ticks()) {
@@ -86,9 +107,11 @@ int main(void) {
 				else
 					tft_println("Scanning");
 				
-				tft_println("%X", TIM3->CCMR1);
+				tft_println("%d %d %d %d %d", buffer[0], buffer[1], buffer[2], buffer[3], buffer[4]);
+				tft_println("%d", GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1));
 				tft_update();
 				(* curState)();
+				read();
 			}
 			
 			if (ticksImg % 500 == 0) {

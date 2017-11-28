@@ -1,10 +1,11 @@
-#ifndef USB_DRIVER_H
-#define USB_DRIVER_H
+#ifndef MONITOR_H
+#define MONITOR_H
 
-#include "stm32f4xx.h"
+// monitor is connected via SPI
+//#include "SPI.h"
+// monitor is connected via UART
+#include "UART.h"
 
-#define MAX_RESPONSE_LEN 4
-#define RESPONSE_NO 17
 
 // Disk Commands
 #define CMD_DIR		0x01	//Directory list or file information
@@ -81,38 +82,55 @@
 #define CMD_IPH		0x91	//Binary Numerical Input
 							//Format: 91 0D
 
-// Prompts and messages returned by VNC1L in Short Command Set
+// definitions for data returned from QD command
+#define MON_QD_CONTROL_EP_SIZE	1
+#define MON_QD_PIPE_IN_EP		2
+#define MON_QD_PIPE_IN_EP_SIZE	3
+#define MON_QD_PIPE_OUT_EP		4
+#define MON_QD_PIPE_UOT_EP_SIZE	5
+#define MON_QD_DEV_TYPE			7
+#define MON_QD_DEV_LOC			9
+#define MON_QD_CLASS			11
+#define MON_QD_SUBCLASS			12
+#define MON_QD_PROTOCOL			13
+#define MON_QD_VID				14
+#define MON_QD_PID				16
+#define MON_QD_BCD				18
+#define MON_QD_DEV_SPEED		20
+#define MON_QD_SIZE				32
+
+// Prompts and messages returned by VNC1L
 enum vResponse {
-// Prompts returned by all VNC1L firmware
-	Resp_Prompt_OK, // > (Success)
-	Resp_Prompt_ND, // ND (Success)
-	Resp_Prompt_UE, // E echo
-	Resp_Prompt_LE, // e echo
-	Resp_Prompt_CF, // CF (Command Failed)
-	Resp_Prompt_BC, // BC (Bad Command)
-	Resp_Prompt_DF, // DF (Disk Full)
-	Resp_Prompt_FI, // FI (File Invalid)
-	Resp_Prompt_RO, // RO (Read Only)
-	Resp_Prompt_FO, // FO (File Open)
-	Resp_Prompt_NE, // NE (Dir Not Empty)
-	Resp_Prompt_FN, // FN (Filename Invalid)
+	// Prompts returned by all VNC1L firmware
+    Resp_Prompt_OK,	// >  (Success)
+    Resp_Prompt_ND,	// ND (Success)
+    Resp_Prompt_UE,	// E echo
+    Resp_Prompt_LE,	// e echo
+    Resp_Prompt_CF,	// CF (Command Failed)
+    Resp_Prompt_BC,	// BC (Bad Command)
+    Resp_Prompt_DF,	// DF (Disk Full)
+    Resp_Prompt_FI,	// FI (File Invalid)
+    Resp_Prompt_RO,	// RO (Read Only)
+    Resp_Prompt_FO,	// FO (File Open)
+    Resp_Prompt_NE,	// NE (Dir Not Empty)
+    Resp_Prompt_FN,	// FN (Filename Invalid)
 	Resp_Prompt_End,
 	// Asynchronous messages returned by all VNC1L firmware
-	Resp_Message_NU, // NU / No Upgrade
-	Resp_Message_DD1, // DD1 / Device Detected USB Port 1)
-	Resp_Message_DD2, // DD2 / Device Detected USB Port 2)
-	Resp_Message_DR1, // DR1 / Device Removed USB Port 1)
-	Resp_Message_DR2, // DR2 / Device Removed USB Port 2)
+    Resp_Message_NU,		// NU / No Upgrade
+    Resp_Message_DD1,	// DD1 / Device Detected USB Port 1)
+    Resp_Message_DD2,	// DD2 / Device Detected USB Port 2)
+    Resp_Message_DR1,	// DR1 / Device Removed USB Port 1)
+    Resp_Message_DR2,	// DR2 / Device Removed USB Port 2)
 	Resp_Message_Splash, // Ver ...
-	Resp_None = 0xff,
+    Resp_None = 0xff,
 };
 
-typedef struct {
-	u8 id;
-	u8 length;
-	char * msg;
-} Response;
 
-void usb_driver_init(void);
+void monSendByte(char monData);
+void monCmdSend(char monCmd);
+void monCmdSendParam(char monCmd, unsigned char monCount, unsigned char *pmonParam);
+void monCmdSendByteParam(char monCmd, unsigned char monParam);
+enum vResponse monPrompt();
+enum vResponse monResponse();
 
 #endif
