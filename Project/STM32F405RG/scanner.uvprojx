@@ -700,14 +700,14 @@
               <FilePath>.\User\led.c</FilePath>
             </File>
             <File>
-              <FileName>lcd_main.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\User\lcd_main.c</FilePath>
-            </File>
-            <File>
               <FileName>button.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\User\button.c</FilePath>
+            </File>
+            <File>
+              <FileName>lcd_main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\User\lcd_main.c</FilePath>
             </File>
             <File>
               <FileName>usb_driver.c</FileName>

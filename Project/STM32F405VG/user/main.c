@@ -76,6 +76,8 @@ int main(void) {
 	stepper_init();
 	btn_reg_OnClickListener(BUTTON_1, scanner_start_btn_handler);
 	btn_reg_OnClickListener(BUTTON_2, scanner_lower_btn_handler);
+	uart_init(COM1, 115200);
+	uart_tx_byte(COM1, 'A');
 	
 	curState = scanner_standby;
 	

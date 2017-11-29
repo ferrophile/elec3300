@@ -1,24 +1,24 @@
 #include "uart.h"
 
 static void uart_gpio_init() {
-	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	
 	GPIO_InitTypeDef GPIO_InitStruct;
-	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_11;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10 | GPIO_Pin_9;
 	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_Init(GPIOB, &GPIO_InitStruct);
 	
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource10, GPIO_AF_USART3);
-	GPIO_PinAFConfig(GPIOB, GPIO_PinSource11, GPIO_AF_USART3);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
 }
 
 void uart_init() {
 	uart_gpio_init();
 	
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 	
 	USART_InitTypeDef USART_InitStruct;
 	USART_InitStruct.USART_BaudRate = 115200;
@@ -27,15 +27,13 @@ void uart_init() {
 	USART_InitStruct.USART_Parity = USART_Parity_No;
 	USART_InitStruct.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
 	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_Init(USART3, &USART_InitStruct);
-	
-	//USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
-	USART_Cmd(USART3, ENABLE);
+	USART_Init(USART1, &USART_InitStruct);
+	USART_Cmd(USART1, ENABLE);
 }
 
 void uart_tx_byte(u8 byte) {
-	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
-	USART_SendData(USART3, byte);
+	while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
+	USART_SendData(USART1, byte);
 }
 
 void uart_tx_word(u16 word) {
