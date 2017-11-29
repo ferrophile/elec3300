@@ -26,56 +26,55 @@ s16 cosines[200] = {
 	8090, 8271, 8443, 8607, 8763, 8910, 9048, 9178, 9298, 9409, 9511, 9603, 9686, 9759, 9823, 9877, 9921, 9956, 9980, 9995
 };
 
-u16 buffer[200] = {0};
+u16 layerBuffer[200] = {0};
+Vector3D nmlBuffer;
+Vector3D vertsBuffer[3];
 
-static void scanner_math_get_nml(Vector3D * vec, u8 step) {
-	vec->x = sines[step];
-	vec->y = cosines[step];
-	vec->z = 0;
+static void scanner_math_set_nml(u8 step) {
+	nmlBuffer.x = sines[step];
+	nmlBuffer.y = cosines[step];
+	nmlBuffer.z = 0;
 }
 
-static void scanner_math_get_vert(Vector3D * vec, u8 step, u16 rawDist, u16 height) {
-	vec->x = sines[step] * rawDist;
-	vec->y = cosines[step] * rawDist;
-	vec->z = height; // * HEIGHT_SCALE;
+static void scanner_math_set_vert(u8 id, u8 step, u16 rawDist, u16 height) {
+	vertsBuffer[id].x = sines[step] * rawDist;
+	vertsBuffer[id].y = cosines[step] * rawDist;
+	vertsBuffer[id].z = height; // * HEIGHT_SCALE;
 }
 
 void scanner_math_handler() {
-	u16 rawValue = 0;
+	u16 rawValue = laser_get_raw_value();
 	static u16 rawValue0 = 0;
 	u8 step = (stepper_get_count(PLATE_STEPPER) - 1) % 200;
-	Vector3D nml;
-	Vector3D verts[3];
 	
-	rawValue = laser_get_raw_value();
 	if (step == 0)
 		rawValue0 = rawValue;
-		
+	
 	if (heightCnt > 0) {		
 		// Upper triangle
 		if (step > 0) {
-			scanner_math_get_nml(&nml, step - 1);
-			scanner_math_get_vert(verts, step, buffer[step], heightCnt - 1);
-			scanner_math_get_vert(verts + 1, step, rawValue, heightCnt);
-			scanner_math_get_vert(verts + 2, step - 1, buffer[step - 1], heightCnt);
-			scanner_stl_write_face(&nml, &verts);
+			scanner_math_set_nml(step - 1);
+			scanner_math_set_vert(0, step, layerBuffer[step], heightCnt - 1);
+			scanner_math_set_vert(1, step, rawValue, heightCnt);
+			scanner_math_set_vert(2, step - 1, layerBuffer[step - 1], heightCnt);
+			scanner_stl_write_face(&nmlBuffer, &vertsBuffer);
 			
 			if (step == 199) {
-				scanner_math_get_nml(&nml, 199);
-				scanner_math_get_vert(verts, 0, rawValue0, heightCnt - 1);
-				scanner_math_get_vert(verts + 1, 0, buffer[0], heightCnt);
-				scanner_math_get_vert(verts + 2, 199, buffer[199], heightCnt);
-				scanner_stl_write_face(&nml, &verts);
+				scanner_math_set_nml(199);
+				scanner_math_set_vert(0, 0, rawValue0, heightCnt - 1);
+				scanner_math_set_vert(1, 0, layerBuffer[0], heightCnt);
+				scanner_math_set_vert(2, 199, layerBuffer[199], heightCnt);
+				scanner_stl_write_face(&nmlBuffer, &vertsBuffer);
 			}
 		}
 		
 		// Lower triangle
-		scanner_math_get_nml(&nml, step);
-		scanner_math_get_vert(verts, step, buffer[step], heightCnt - 1);
-		scanner_math_get_vert(verts + 1, step + 1, buffer[step + 1], heightCnt - 1);
-		scanner_math_get_vert(verts + 2, step, rawValue, heightCnt);
-		scanner_stl_write_face(&nml, &verts);
+		scanner_math_set_nml(step);
+		scanner_math_set_vert(0, step, layerBuffer[step], heightCnt - 1);
+		scanner_math_set_vert(1, step + 1, layerBuffer[step + 1], heightCnt - 1);
+		scanner_math_set_vert(2, step, rawValue, heightCnt);
+		scanner_stl_write_face(&nmlBuffer, &vertsBuffer);
 		
-		buffer[step] = rawValue;
+		layerBuffer[step] = rawValue;
 	}
 }
