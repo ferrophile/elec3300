@@ -36,14 +36,34 @@ void uart_tx_byte(u8 byte) {
 	USART_SendData(USART1, byte);
 }
 
+// Use little-endian
 void uart_tx_word(u16 word) {
-	uart_tx_byte((u8)(word & 0xFF00) >> 8);
 	uart_tx_byte((u8)(word & 0x00FF));
+	uart_tx_byte((u8)((word & 0xFF00) >> 8));
 }
 
 void uart_tx_dword(u32 dword) {
-	uart_tx_byte((u8)(dword & 0xFF000000) >> 24);
-	uart_tx_byte((u8)(dword & 0x00FF0000) >> 16);
-	uart_tx_byte((u8)(dword & 0x0000FF00) >> 8);
 	uart_tx_byte((u8)(dword & 0x000000FF));
+	uart_tx_byte((u8)((dword & 0x0000FF00) >> 8));
+	uart_tx_byte((u8)((dword & 0x00FF0000) >> 16));
+	uart_tx_byte((u8)((dword & 0xFF000000) >> 24));
+}
+
+void uart_tx_float(float num) {
+	u32 * cast = (u32 *) &num;
+	uart_tx_dword(*cast);
+}
+
+void uart_tx_text(const char * data, ...) {
+	va_list arglist;
+	uint8_t buf[255], *fp;
+	
+	va_start(arglist, data);
+	vsprintf((char*)buf, data, arglist);
+	va_end(arglist);
+	
+	fp = buf;
+	while (*fp){
+		uart_tx_byte(*fp++);
+	}
 }

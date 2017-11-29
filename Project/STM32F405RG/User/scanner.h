@@ -14,9 +14,9 @@
 #define LASER ADC_PORT_1
 
 typedef struct {
-	s32 x;
-	s32 y;
-	s32 z;
+	float x;
+	float y;
+	float z;
 } Vector3D;
 
 extern u16 heightCnt;
@@ -30,7 +30,7 @@ void scanner_run(void);
 void scanner_show(void);
 
 void scanner_stl_write_header(u32 trigCnt);
-void scanner_stl_write_face(Vector3D * nml, Vector3D (* verts)[3]);
+void scanner_stl_write_face(Vector3D * nml, Vector3D * vert1, Vector3D * vert2, Vector3D * vert3);
 
 void scanner_math_handler(void);
 

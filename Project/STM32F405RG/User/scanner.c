@@ -25,11 +25,11 @@ static void scanner_inc_height() {
 
 static void scanner_start_btn_handler() {
 	if (curState == scanner_standby) {
-		scanner_stl_write_header(400);
+		scanner_stl_write_header(800);
 		heightCnt = 0;
 		
 		stepper_set_handler(PLATE_STEPPER, scanner_math_handler);
-		stepper_set_deg(PLATE_STEPPER, 25, 360);
+		stepper_set_deg(PLATE_STEPPER, 100, 360);
 		curState = scanner_rotate_plate;
 	} else {
 		stepper_set_vel(LASER_STEPPER, 0);
@@ -66,6 +66,7 @@ void scanner_run() {
 }
 
 void scanner_show() {
+	
 	tft_clear();
 	tft_println("%d", get_ticks());
 	tft_println("%d %d %d", stepper_get_vel(STEPPER_1), stepper_get_params(STEPPER_1)->countsBetweenPulses, stepper_get_params(STEPPER_1)->targetStepCount);

@@ -76,5 +76,7 @@ u16 laser_get_reading(u8 id) {
 }
 
 u16 laser_get_raw_value(void) {
-	return 100;
+	static u8 i = 0;
+	i = (i+1) % 17;
+	return i * 10 + 10;
 }
