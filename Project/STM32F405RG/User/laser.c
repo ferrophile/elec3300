@@ -21,3 +21,7 @@ static void laser_adc_init(void) {
 	ADC_CommonInitStruct.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
 	ADC_CommonInitStruct.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
 }
+
+u16 laser_get_raw_value(void) {
+	return 0;
+}

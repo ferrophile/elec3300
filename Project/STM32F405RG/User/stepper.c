@@ -1,7 +1,7 @@
 #include "stepper.h"
 
 // List of steppers.
-static STEPPER stepperList[STEPPER_COUNT];
+static Stepper stepperList[STEPPER_COUNT];
 
 // This specifies the no. of timer counts for a trigger pulse.
 static const u8 triggerPulseCount = 2; // 6 us
@@ -101,7 +101,7 @@ static u32 stepper_get_pulse_count(s16 vel) {
 }
 
 void stepper_init(void) {
-	STEPPER stepper;
+	Stepper stepper;
 	
 	for (u8 i = 0; i < STEPPER_COUNT; i++) {
 		stepper.velocity = 0;
@@ -110,6 +110,7 @@ void stepper_init(void) {
 		stepper.setVelocityFlag = 0;
 		stepper.stepCount = 0;
 		stepper.targetStepCount = 0;
+		stepper.handler = 0;
 		
 		stepper.channel = 4 * i;
 		stepper.interruptChannel = TIM_IT_CC1 << i;
@@ -125,27 +126,32 @@ void stepper_init(void) {
 	stepper_nvic_init();
 }
 
+void stepper_set_handler(u8 id, StepHandler newHandler) {
+	Stepper * stepper = stepperList + id;
+	stepper->handler = newHandler;
+}
+
 s16 stepper_get_vel(u8 id) {
-	STEPPER * stepper = stepperList + id;
+	Stepper * stepper = stepperList + id;
 	return stepper->velocity;
 }
 
-STEPPER * stepper_get_params(u8 id) {
+Stepper * stepper_get_params(u8 id) {
 	return stepperList + id;
 }
 
 u32 stepper_get_count(u8 id) {
-	STEPPER * stepper = stepperList + id;
+	Stepper * stepper = stepperList + id;
 	return stepper->stepCount;
 }
 
 u8 stepper_is_idle(u8 id) {
-	STEPPER * stepper = stepperList + id;
+	Stepper * stepper = stepperList + id;
 	return (stepper->stepCount == stepper->targetStepCount);
 }
 
 void stepper_set_vel(u8 id, s16 vel) {
-	STEPPER * stepper = stepperList + id;
+	Stepper * stepper = stepperList + id;
 	
 	if (stepper->velocity == 0) {
 		// Start moving - generate a pulse next count
@@ -167,7 +173,7 @@ void stepper_set_vel(u8 id, s16 vel) {
 }
 
 void stepper_set_deg(u8 id, s16 vel, u32 degree) {
-	STEPPER * stepper = stepperList + id;
+	Stepper * stepper = stepperList + id;
 	
 	u32 counts = degree * countsPerRevolution / 360;
 	stepper_set_vel(id, vel);
@@ -176,7 +182,7 @@ void stepper_set_deg(u8 id, s16 vel, u32 degree) {
 
 void TIM3_IRQHandler(void) {
 	for (u8 i = 0; i < STEPPER_COUNT; i++) {
-		STEPPER * stepper = stepperList + i;
+		Stepper * stepper = stepperList + i;
 		u16 interruptChannel = stepper->interruptChannel;
 		if (TIM_GetITStatus(TIM3, interruptChannel)) {
 			// TIM3_CHx pins (STEP pins) will be automatically toggled by hardware.
@@ -204,6 +210,10 @@ void TIM3_IRQHandler(void) {
 					// Clear flag
 					stepper->setVelocityFlag = 0;
 				}
+				
+				// Run handler (if any)
+				if (stepper->handler)
+					(stepper->handler)();
 				
 				// Falling edge; pin will be pulled down, wait for period until next pulse
 				u32 nextCount = stepper->countsBetweenPulses;

@@ -9,6 +9,7 @@
 #define SIGN(x) ((x) / ABS(x))
 
 typedef void (*SetCompareFunc)(TIM_TypeDef* TIMx, uint32_t Compare);
+typedef void (*StepHandler)(void);
 
 // Stepper ID
 enum {
@@ -25,20 +26,22 @@ typedef struct {
 	u8 setVelocityFlag;				// Flag for set velocity request
 	s32 stepCount;						// No. of (signed) steps moved, ignoring skips
 	s32 targetStepCount;			// Step count destination
+	StepHandler handler;			// Handler function for each step (clear it if not needed)
 	
 	/*-- STM SPL constructs --*/
 	u16 channel;
 	u16 interruptChannel;
 	SetCompareFunc setCompareFunc;
-} STEPPER;
+} Stepper;
 
 void stepper_init(void);
+void stepper_set_handler(u8 id, StepHandler newHandler);
 s16 stepper_get_vel(u8 id);
 void stepper_set_vel(u8 id, s16 vel);
 void stepper_set_deg(u8 id, s16 vel, u32 degree);
 u32 stepper_get_count(u8 id);
 u8 stepper_is_idle(u8 id);
 
-STEPPER * stepper_get_params(u8 id);
+Stepper * stepper_get_params(u8 id);
 
 #endif

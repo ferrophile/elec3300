@@ -4,6 +4,9 @@
 #include "ticks.h"
 #include "button.h"
 #include "lcd_main.h"
-#include "usb_driver.h"
+#include "uart.h"
 
 #include "stepper.h"
+#include "laser.h"
+
+#include "scanner.h"
