@@ -13,7 +13,6 @@ enum {
 
 void laser_init(void);
 u16 laser_get_reading(u8 id);
-u32 laser_get_distance(void);
 u16 laser_get_raw_value(void);
 
 #endif

@@ -20,10 +20,12 @@ typedef struct {
 } Vector3D;
 
 extern u16 heightCnt;
+extern u16 totalHeight;
 
 static void scanner_standby(void);
+static void scanner_get_height(void);
 static void scanner_rotate_plate(void);
-static void scanner_inc_height(void);
+static void scanner_dec_height(void);
 
 void scanner_init(void);
 void scanner_run(void);

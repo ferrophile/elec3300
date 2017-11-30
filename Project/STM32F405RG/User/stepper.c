@@ -154,14 +154,16 @@ void stepper_set_vel(u8 id, s16 vel) {
 	Stepper * stepper = stepperList + id;
 	
 	if (stepper->velocity == 0) {
-		// Start moving - generate a pulse next count
-		u16 nextCount = TIM_GetCounter(TIM3) + 5;
-		
-		stepper_set_dir_pin(id, vel);
-		(stepper->setCompareFunc)(TIM3, nextCount);
-		TIM_SelectOCxM(TIM3, stepper->channel, TIM_OCMode_Toggle);
-		TIM_CCxCmd(TIM3, stepper->channel, TIM_CCx_Enable);
-		TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
+		if (vel != 0) {
+			// Start moving - generate a pulse next count
+			u16 nextCount = TIM_GetCounter(TIM3) + 5;
+			
+			stepper_set_dir_pin(id, vel);
+			(stepper->setCompareFunc)(TIM3, nextCount);
+			TIM_SelectOCxM(TIM3, stepper->channel, TIM_OCMode_Toggle);
+			TIM_CCxCmd(TIM3, stepper->channel, TIM_CCx_Enable);
+			TIM_ITConfig(TIM3, stepper->interruptChannel, ENABLE);
+		}
 	} else {
 		// Already moving - wait for next pulse to change
 		stepper->setVelocityFlag = 1;
