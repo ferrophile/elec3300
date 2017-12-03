@@ -1,9 +1,5 @@
-/Development Tools
-/HW
-/Lecture Notes
-/STM32 References
-/Tutorial
-/Useful Datasheets
+/misc
+
 # Object files
 *.o
 *.ko
