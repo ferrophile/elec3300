@@ -1,6 +1,4 @@
-﻿# 3D Scanner - Group 24
-
-Our project for ELEC3300 2017 Fall is a 3D scanner.
+﻿### Members
 
 |Name|ITSC / Email|
 |---|---|
