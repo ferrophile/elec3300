@@ -22,4 +22,4 @@ All are in PDF format.
 * [Project summary](ProjectSummary.pdf)
 * [Proposal presentation](ProposalPresentation.pdf)
 * [Final presentation](FinalPresentation.pdf)
-* [Mainboard schematic](Scheme.pdf)
+* [Mainboard schematic](Scheme.PDF)
